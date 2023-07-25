@@ -258,6 +258,20 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
     assert_eq!(ref_x, Some(&42)); // as opposed to Box<Some<i32>>
     ```
 
+- in places where a lifetime can be elided, but it may be useful to indicate
+  that there is lifetime stuff going on, one can use the `'_` _explicitly
+  elided lifetime_ syntax:
+
+  ```rust
+  impl<T> for Foo<T> {
+    // lifetime is not needed here, as it's inferred, but we can indicate
+    // that we've elided it
+    fn do_the_thing(&self) -> SomeOtherThing<'_, T> {
+      // ...
+    }
+  }
+  ```
+
 ### std::Default
 
 - implementing `Default` for a struct allows for default values of a struct to

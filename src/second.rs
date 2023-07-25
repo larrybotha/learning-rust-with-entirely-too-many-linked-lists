@@ -63,7 +63,11 @@ impl<T> List<T> {
         IntoIter(self)
     }
 
-    pub fn iter(&self) -> Iter<T> {
+    // Instead of entirely eliding the lifetime, we can indicate that there
+    // _is_ a lifetime, but because of lifetime elision rules it can be inferred
+    pub fn iter(&self) -> Iter<'_, T> {
+        //pub fn iter(&self) -> Iter<T> {
+        //
         // We can elide the lifetimes in this method because of the following
         // lifetime elision because...
         //  - the lifetime of a returned value of a function that only takes
