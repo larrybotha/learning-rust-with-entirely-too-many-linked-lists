@@ -45,12 +45,42 @@ impl<T> Drop for List<T> {
     }
 }
 
+// #Iterator 1 - we create a tuple struct which wraps our List
+pub struct IntoIter<T>(List<T>);
+
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
 
 impl<T> List<T> {
     pub fn new() -> Self {
         Self { head: None }
     }
 
+    // #Iterator 2 - we add an associated function which returns
+    // IntoIter wrapping our List
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter {
+            next: {
+                // .as_deref() does the following:
+                //  - changes Option<T> to Option<&T>, i.e. creating a reference to the value in
+                //  the Option
+                //  - converts turns Option<Bos<Node<T>>> into Option<&Box<Node<T>>>, and then
+                //  - dereferences the Box, resulting in Option<&Node<T>>
+                self.head.as_deref()
+
+                // We could also have done the following:
+                //
+                //self.head                           // here we have Box<Node<T>>
+                //    .as_ref()                       // now we have &Box<Node<T>>
+                //    .map(|node| node.as_ref())      // return &Node<T>
+            },
+        }
+    }
 
     pub fn push(&mut self, value: T) {
         let node = Node {
@@ -108,6 +138,37 @@ impl<T> List<T> {
 impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// #Iterator 3 - we implement Iterator for IntoIter, IntoIter all
+// the methods that are available to iterators
+impl<T> Iterator for IntoIter<T> {
+    // This is an associated type that Iterator expects us to define
+    // This indicates to the implementation what the type inside the
+    // iterator is
+    // In the .next implementation, we return Option<Self::Item>, which
+    // is also valid as Option<T>
+    type Item = T;
+
+    // next is the minimally required associated function we need to
+    // implement
+    fn next(&mut self) -> Option<Self::Item> {
+        // First we access List using an index in our tuple struct,
+        // then we .pop the value and return it
+        self.0.pop()
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_ref().map(|n| n.as_ref());
+
+            &node.elem
+        })
     }
 }
 
@@ -191,4 +252,20 @@ mod test {
         }
     }
 
+    #[test]
+    fn into_iter() {
+        let mut list = List::new();
+        let mut xs = [0, 2, 3];
+
+        xs.into_iter().for_each(|x| list.push(x));
+        xs.reverse();
+
+        let mut list_iter = list.into_iter();
+
+        for x in xs {
+            let value = list_iter.next();
+
+            assert_eq!(value, Some(x));
+        }
+    }
 }
