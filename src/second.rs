@@ -84,6 +84,25 @@ impl<T> List<T> {
             node.elem
         })
     }
+
+    pub fn peek(&self) -> Option<&T> {
+        // The following fails, because .map moves node into the closure,
+        // and out of head
+        //self.head.map(|node| &node.elem)
+
+        // we have to use .as_ref because .map takes self by value, which
+        // would move the value _out_ of the head, which we don't want
+        // .as_ref switches from &Option<T> to Option<&T> - in the lesson
+        // it's said that the value is demoted from Option<T> to an Option
+        // with a reference to the value
+        self.head.as_ref().map(|node| &node.elem)
+    }
+
+    // we need to declare that the return type is mutable
+    pub fn peek_mut(&mut self) -> Option<&mut T> {
+        // Option::as_mut returns a mutable reference to the caller
+        self.head.as_mut().map(|node| &mut node.elem)
+    }
 }
 
 impl<T> Default for List<T> {
@@ -118,4 +137,58 @@ mod test {
         assert_eq!(list.pop(), Some(1));
         assert_eq!(list.pop(), None);
     }
+
+    #[test]
+    fn peek() {
+        let mut list = List::new();
+        let mut xs: [i32; 5] = (0..5).collect::<Vec<i32>>().try_into().unwrap();
+
+        xs.into_iter().for_each(|x| list.push(x));
+
+        xs.reverse();
+
+        for x in xs {
+            assert_eq!(list.peek(), Some(&x));
+            list.pop();
+        }
+    }
+
+    #[test]
+    fn peek_mut() {
+        let mut list = List::new();
+        let mut xs: [i32; 5] = (0..5).collect::<Vec<i32>>().try_into().unwrap();
+
+        xs.into_iter().for_each(|x| list.push(x));
+
+        xs.reverse();
+
+        for x in xs {
+            // We don't destructure y here using `&mut y`
+            // If we did, we'd be left with i32, when what we want is to operate
+            // on the mutable reference to i32, i.e. we want &mut i32 inside the
+            // closure
+            // Additionally, we need to return y in the closure, because .map
+            // expects a return value. We can't use Option::for_each because there
+            // is no such thing, although we could use Option::iter::for_each to
+            // first turn it into an iterator, but that brings other compiler
+            // nightmares...
+            //list.peek_mut().map(|y| {
+            //    *y += 1;
+            //    y
+            //});
+
+            // We could also use if let, which in this case turns out to be more
+            // terse, yet potentially less readable:
+            if let Some(y) = list.peek_mut() {
+                *y += 1
+            };
+
+            let value = list.peek();
+
+            assert_eq!(value, Some(&(x + 1)));
+
+            list.pop();
+        }
+    }
+
 }
