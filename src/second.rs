@@ -69,7 +69,7 @@ impl<T> List<T> {
                 // .as_deref() does the following:
                 //  - changes Option<T> to Option<&T>, i.e. creating a reference to the value in
                 //  the Option
-                //  - converts turns Option<Bos<Node<T>>> into Option<&Box<Node<T>>>, and then
+                //  - converts Option<Bos<Node<T>>> into Option<&Box<Node<T>>>, and then
                 //  - dereferences the Box, resulting in Option<&Node<T>>
                 self.head.as_deref()
 
@@ -135,6 +135,8 @@ impl<T> List<T> {
     }
 }
 
+// allow the use of:
+//  let my_list: List<i32> = Default::default();
 impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()

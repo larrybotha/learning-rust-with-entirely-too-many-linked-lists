@@ -257,3 +257,20 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
 
     assert_eq!(ref_x, Some(&42)); // as opposed to Box<Some<i32>>
     ```
+
+### std::Default
+
+- implementing `Default` for a struct allows for default values of a struct to
+  be generated:
+
+  ```rust
+  #[derive(Default)]
+  struct Foo {
+    x: i32,
+  }
+
+  let my_foo = Foo { ..Default::default() }; // or even
+  let my_foo: Foo = Default::default();
+
+  assert_eq!(my_foo.x, 0);
+  ```
