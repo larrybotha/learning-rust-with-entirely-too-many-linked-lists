@@ -63,7 +63,12 @@ impl<T> List<T> {
         IntoIter(self)
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+    pub fn iter(&self) -> Iter<T> {
+        // We can elide the lifetimes in this method because of the following
+        // lifetime elision because...
+        //  - the lifetime of a returned value of a function that only takes
+        //      one argument is the lifetime of that argument
+        //pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         Iter {
             next: {
                 // .as_deref() does the following:
