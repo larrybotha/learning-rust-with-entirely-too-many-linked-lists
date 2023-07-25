@@ -1,5 +1,5 @@
 [package]
-name = "too_many_lists"
+name = "learning_rust_with_entirely_too_many_linked_lists"
 version = "0.1.0"
 edition = "2021"
 
