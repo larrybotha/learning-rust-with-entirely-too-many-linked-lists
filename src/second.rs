@@ -1,6 +1,6 @@
-struct Node {
-    elem: i32,
-    next: Link,
+struct Node<T> {
+    elem: T,
+    next: Link<T>,
 }
 
 // This is actually a poor reimplementation of Option
@@ -10,12 +10,13 @@ struct Node {
 //}
 
 // replace it with a type alias
-type Link = Option<Box<Node>>;
+type Link<T> = Option<Box<Node<T>>>;
 
-pub struct List {
-    head: Link,
+pub struct List<T> {
+    head: Link<T>,
 }
-impl Drop for List {
+
+impl<T> Drop for List<T> {
     fn drop(&mut self) {
         //let mut cur_link = mem::replace(&mut self.head, None);
         //
@@ -44,12 +45,14 @@ impl Drop for List {
     }
 }
 
-impl List {
+
+impl<T> List<T> {
     pub fn new() -> Self {
         Self { head: None }
     }
 
-    pub fn push(&mut self, value: i32) {
+
+    pub fn push(&mut self, value: T) {
         let node = Node {
             elem: value,
             next: self.head.take(),
@@ -58,7 +61,7 @@ impl List {
         self.head = Some(Box::new(node));
     }
 
-    pub fn pop(&mut self) -> Option<i32> {
+    pub fn pop(&mut self) -> Option<T> {
         //match self.head.take() {
         //    None => None,
         //    Some(node) => {
@@ -83,7 +86,7 @@ impl List {
     }
 }
 
-impl Default for List {
+impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()
     }
