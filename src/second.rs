@@ -83,6 +83,16 @@ impl<T> List<T> {
                 //self.head                           // here we have Box<Node<T>>
                 //    .as_ref()                       // now we have &Box<Node<T>>
                 //    .map(|node| node.as_ref())      // return &Node<T>
+                //
+                // or a nasty-looking reference and double-dereference
+                //self.head
+                //    .as_ref()
+                //    .map(|node| &**node)
+                //
+                // or even with turbofish
+                //self.head
+                //    .as_ref()
+                //    .map::<&Node<T>, _>(|node| node)
             },
         }
     }
