@@ -52,6 +52,10 @@ pub struct Iter<'a, T> {
     next: Option<&'a Node<T>>,
 }
 
+pub struct IterMut<'a, T> {
+    next: Option<&'a mut Node<T>>,
+}
+
 impl<T> List<T> {
     pub fn new() -> Self {
         Self { head: None }
@@ -98,6 +102,26 @@ impl<T> List<T> {
                 //    .as_ref()
                 //    .map::<&Node<T>, _>(|node| node)
             },
+        }
+    }
+
+    // Define a public method that returns a mutable iterable of the list
+    // We return IterMut where IterMut::next is a private attribute that holds
+    // a mutable reference to the node at the head of the list
+    // This .next is different from the public associated function .next we
+    // define when implementing Iterator - that function uses _this_ .next
+    // attribute in order to get the value out of the node, and return a mutable
+    // reference to the value inside the node
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        IterMut {
+            // We use Option::as_deref_mut because:
+            //  - we want deref coercion to get Node<T> out of Box<Node<T>>
+            //  - we want to return a reference to the Node inside the Box
+            //  - we want that reference to be mutable
+            //
+            //  i.e. next is not Option<&mut Node<T>>, as we require in our
+            //  definition of IterMut::next
+            next: self.head.as_deref_mut(),
         }
     }
 
@@ -184,12 +208,72 @@ impl<T> Iterator for IntoIter<T> {
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    //fn next(&mut self) -> Option<Self::Item> {
+    // The signature above is the desugared version of below.
+    // Note how the lifetime of _self_ is different from the lifetime
+    // used in the implementation
+    //
+    // i.e. after we get an iterator from the list, after using List.iter(),
+    // that list_iterator.next() can be called multiple times because this
+    // signature indicates that the lifetime of the iterator is independent
+    // of the lifetime of the references being returned
+    //
+    // - we can have multiple immutable references at the same time
+    fn next<'b>(&'b mut self) -> Option<&'a T> {
         self.next.map(|node| {
-            self.next = node.next.as_ref().map(|n| n.as_ref());
+            //self.next = node.next.as_ref().map(|n| n.as_ref());
+            self.next = node.next.as_deref();
 
             &node.elem
         })
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    // For IterMut::next we need to return a mutable reference
+    // on each iteration
+    // A value may only have a single mutable reference at a time...
+    // In order to support this, we need to ensure that for every iteration,
+    // no one else may access the returned value
+    // This can be achieved by using .take() to:
+    //  - set self.next to None
+    //  - mappin over the value we get from .take()
+    //  - setting self.next to .next of its old value
+    //  - returning a mutable reference to the value inside the old node
+    fn next<'b>(&'b mut self) -> Option<&'a mut T> {
+        self
+            // this .next is IterMut::next
+            .next
+            // use Option::take to:
+            //  - set self.next to None
+            //  - allow for mapping over the contained value, which is Node<T>
+            .take()
+            // we now have Node<T>
+            .map(|node| {
+                // Set self.next to the next value of the node we got in the
+                // closure by using Option::as_deref_mut, which:
+                //  - uses deref coercion to convert Box<Node<T>> to Node<T>
+                //  - returns Option<&mut Node<T>>
+                self.next = node.next.as_deref_mut();
+
+                // This return syntax seems unusual, but it's a more terse version
+                // of creating a mutable reference using variable assignment:
+                //
+                // let x = &mut node.elem
+                // return x
+                //
+                // On it's own, node.elem :: T
+                //
+                // We specify explicitly that we are returning a mutable
+                // reference to the value
+                //
+                // - the closure receives &mut Node<T>
+                // - node.elem returns T
+                // - we return &mut T, as required by .next's signature
+                &mut node.elem
+            })
     }
 }
 
