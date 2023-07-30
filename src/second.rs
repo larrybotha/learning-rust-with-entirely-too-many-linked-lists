@@ -373,4 +373,21 @@ mod test {
             assert_eq!(value, Some(x));
         }
     }
+
+    #[test]
+    fn iter_mut() {
+        let xs: Vec<i32> = (0..=3).collect();
+        let mut list = List::new();
+
+        xs.iter().for_each(|x| list.push(x));
+
+        let mut mutable_iter = list.iter_mut();
+
+        for (i, _) in xs.iter().enumerate() {
+            let mut x = &xs[xs.len() - 1 - i];
+            let z = mutable_iter.next();
+
+            assert_eq!(z, Some(&mut x));
+        }
+    }
 }
