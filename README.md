@@ -272,6 +272,22 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   }
   ```
 
+  This is syntactic sugar for:
+
+  ```rust
+  impl<T> for Foo<T> {
+    fn do_the_thing<'b>(&'b self) -> SomeOtherThing<'a, T> {
+      // ...
+    }
+  }
+  ```
+
+  The lifetime of Foo is independent of the lifetime of `SomeOtherThing` when
+  calling `do_the_thing`.
+
+  We can call `do_the_thing` how and when we want, and the compiler knows that
+  `Foo` is not dependent on `Something` in any way
+
 ### std::Default
 
 - implementing `Default` for a struct allows for default values of a struct to
@@ -288,3 +304,19 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
 
   assert_eq!(my_foo.x, 0);
   ```
+
+### IterMut
+
+- we implement a mutable iterator in a similar manner to a non-mutable iterator:
+  - create a struct called `IterMut` that contains a single field which holds
+    a reference to the next node in the list
+  - implement `Iterator` for `IterMut`
+    - at a minimum we need to implement `Iterator::next`
+    - `Iterator::next` needs to return `Option<&mut T>`
+- with Rust's rules on mutable references, we may only have a single mutable
+  reference to a value at a time. In order to ensure that there aren't
+  multiple references to the value we return each time we call `.next`, we
+  need to use `.take` when mapping over nodes in the list, that way:
+  - the node is first assigned to `None` so that no other calls to `.next`
+    anywhere else have access to the value
+  - we then assign the next value inside the `.map` closure
