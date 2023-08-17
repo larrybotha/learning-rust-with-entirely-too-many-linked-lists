@@ -4,6 +4,10 @@ pub struct List<T> {
     head: Link<T>,
 }
 
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
+
 type Link<T> = Option<Rc<Node<T>>>;
 
 #[derive(Debug)]
@@ -15,6 +19,12 @@ struct Node<T> {
 impl<T> List<T> {
     pub fn new() -> Self {
         Self { head: None }
+    }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            next: self.head.as_deref(),
+        }
     }
 
     pub fn prepend(&mut self, elem: T) -> Self {
@@ -55,6 +65,18 @@ impl<T> List<T> {
     }
 }
 
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_deref();
+
+            &node.elem
+        })
+    }
+}
+
 impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()
@@ -85,5 +107,18 @@ mod test {
         // Make sure empty tail works
         let list = list.tail();
         assert_eq!(list.head(), None);
+    }
+
+    #[test]
+    fn iter() {
+        let mut list = List::new();
+
+        let list = list.prepend(1).prepend(2).prepend(3);
+        let mut iter = list.iter();
+
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), None);
     }
 }
