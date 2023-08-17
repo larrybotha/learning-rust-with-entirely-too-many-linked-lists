@@ -320,3 +320,62 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   - the node is first assigned to `None` so that no other calls to `.next`
     anywhere else have access to the value
   - we then assign the next value inside the `.map` closure
+
+## A Persistent Stack
+
+- for representing the following lists:
+
+  ```
+  list A ────┐
+             │
+        list B ── C ── D ── E
+             │
+  list X ────┘
+  ```
+
+  If we used `Box` to represent the shared references to `B`, we'd have an issue
+  when it came to dropping the reference...
+
+  If we drop `list X`... should that result in `list B` being dropped? With
+  `Box` we'd expect that, because `Box` allows _exclusive ownership_, but
+  then `list A` would no longer be pointing to the `list B`
+
+  We can't use `Box` for managing lists in this way, because it doesn't allow
+  for shared references
+
+- `Rc` provides an alternative to `Box` - `Rc` allows for shared references via
+  cloning; we can have have multiple independent references to a value, and only
+  when the count of those references reaches 0 will the `Rc` be dropped
+- destructuring a reference when it's a function argument is is interchangeable
+  with dereferencing the value inside the same function:
+
+  ```rust
+  let xs = [1,2,3];
+  let mut ys: Vec<i32> = Vec::new();
+  let mut zs: Vec<i32> = Vec::new();
+
+  xs.iter().for_each(|x| {
+    // dereference the value before appending
+    ys.push(*x)
+  })
+
+  // destructure the reference at the argument-level
+  xs.iter().for_each(|&x| {
+    zs.push(x)
+  })
+  ```
+
+- `.and_then` is syntactic sugar for removing nested `Option` or `Result`
+  values:
+
+  ```rust
+  fn wrap(x: i32) -> Option<i32> {
+    Some(x)
+  }
+
+  let x = Some(42); // Option<Option<i32>>
+  let y = x.map(|v| wrap(v))  // Option<Option<i32>>
+            .unwrap_or(None); // Option<i32>
+  // or, more succinctly
+  let y = x.and_then(|v| wrap(v)); // Option<i32>
+  ```
