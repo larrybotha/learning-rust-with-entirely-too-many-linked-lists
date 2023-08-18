@@ -379,3 +379,32 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   // or, more succinctly
   let y = x.and_then(|v| wrap(v)); // Option<i32>
   ```
+
+- to implement `Iterator` for `List`, we must:
+  - define a way to turn `List` into an iterator idiomatically, i.e. with a
+    `.iter` method
+  - `.iter` returns an object that upon iteration generates a reference to a
+    value, whereas `.into_iter` returns an object that consumes the original
+    value. We can't return a mutable reference, however, because the value
+    returned on each iteration is dereferenced from `Rc`. `Rc` allows for
+    multiple references, which in turn prevents us from making this references
+    mutable (ignoring _interior mutability_ for the sake of this example)
+  - what does adding an `.iter` method mean? It means we need to return
+    something that implements `Iterator`. In that case, we create a struct
+    with a single field
+  - the field in our `Iter` is initialised with a reference to the value at the
+    head of our list
+  - we then need to implement the `Iterator` trait for our `Iter`, so that we
+    have access to the methods that `Iterator` provides
+  - we must implement an associated function on `Iter` called `.next` which returns an
+    otion containing a reference to the value that `Iter` is currently
+    holding
+  - inside `.next` we:
+    - map on the contained value, which is an `Option<Node<T>>`
+    - if there is no node, the iterator returns `None`
+    - if there is a node:
+      - set the new value of `Iter` to the next value of the node
+      - return a reference to the value in the node
+- Rust allows for structs to both have fields and associated functions of the
+  same name. This is why `Iter` can contain the next value in `.next`, while
+  simultaneously implementing `.next()` for `Iterator`

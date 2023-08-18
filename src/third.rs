@@ -4,7 +4,19 @@ pub struct List<T> {
     head: Link<T>,
 }
 
+// We need a struct that will implement the Iterator trait
+// Why do we define a lifteime in the struct declaration?
+//  Because one or more of the fields contains a reference
+// Why do we have a reference?
+//  Because our value is derived from the contents of an Rc, which is a
+//  reference
+//  This also means we can't implement IterMut for our List with our
+//  current definitions - Rc on its own doesn't allow for mutable references
+//  because we have _multiple references_ - Rust's borrowing rules
+//  Also, by convention, .iter returns an iterator that yields
+//  references, as opposed to .into_iter which yields and consumes values
 pub struct Iter<'a, T> {
+    // it has a field
     next: Option<&'a Node<T>>,
 }
 
@@ -21,8 +33,17 @@ impl<T> List<T> {
         Self { head: None }
     }
 
+    // create an associated function which allows us to return Iter -
+    // the struct that will be implementing Iterator
     pub fn iter(&self) -> Iter<'_, T> {
+        // return our Iter struct
         Iter {
+            // with its initial value as the head of the list
+            // We deference the value using .as_deref, which does the
+            // following:
+            //  - coerces Option<Rc<Node<T>>> to Option<Node<T>>
+            //  - converts Option<Node<T>> to Option<&Node<T>>, which is
+            //      what we need as defined by Iter's type
             next: self.head.as_deref(),
         }
     }
@@ -65,13 +86,32 @@ impl<T> List<T> {
     }
 }
 
+// we implement Iterator for Iter.
+// Iter has a lifetime parameter, so when we implement a trait, we need to
+// specify that the implementation has a lifetime parameter
 impl<'a, T> Iterator for Iter<'a, T> {
+    // Iterator has an associated type called Item. Item is the value
+    // that is returned by .next()
     type Item = &'a T;
 
+    // The minimum implementation requirement for Iterator is .next()
     fn next(&mut self) -> Option<Self::Item> {
+        // self.next, the attribute on Iter (i.e. the struct can have both fields
+        // and associated functions with the same name) has the type
+        // Option<&'a Node<T>>
+        // We need to:
+        //  - return a Option<&'a T>
+        //  - set Iter.next to the next node
         self.next.map(|node| {
+            // as when we initialised Iter, each node's .next value will have the
+            // type Option<Rc<Node<T>>>
+            // We do the same as during initialisation; use Option::as_deref to:
+            //  - coerce Option<Rc<Node<T>>> to Option<Node<T>>
+            //  - convert Option<Node<T>> to Option<&Node<T>>, which is the type
+            //      that Iter::next expects
             self.next = node.next.as_deref();
 
+            // we return a reference to the node's element
             &node.elem
         })
     }
