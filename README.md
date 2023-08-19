@@ -380,6 +380,8 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   let y = x.and_then(|v| wrap(v)); // Option<i32>
   ```
 
+### Implementing `Iterator`
+
 - to implement `Iterator` for `List`, we must:
   - define a way to turn `List` into an iterator idiomatically, i.e. with a
     `.iter` method
@@ -408,3 +410,59 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
 - Rust allows for structs to both have fields and associated functions of the
   same name. This is why `Iter` can contain the next value in `.next`, while
   simultaneously implementing `.next()` for `Iterator`
+
+### Implementing `Drop`
+
+- as with `Box`, it appears that `Rc` seems to have a similar issue where if we
+  drop an `Rc`, the contained value won't necessarily be dropped. This is
+  because `Rc` contains a value that may have 0 or more references to it - if
+  it were to drop the value the application would be in a state where it could
+  have invalid references - something Rust disallows by default
+- what we can do, however, is leverage a feature of `Rc` - `Rc::try_unwrap`
+  exists to 'release' the value from the `Rc` _if_ there was only 1 reference
+  to the value
+- `Rc::try_unwrap` returns a `Result` - if there is only 1 reference, you'll get
+  an `Ok(x)`, otherwise `Err`
+- for `Drop`, we can match on `Ok` so that we can drop the values
+- where do we start...? Looking at the diagram above, if we were to drop `List A`
+  starting from the head, and using `Rc::try_unwrap`, we would be able to safely
+  drop the first item, but we'd then be unable to drop the second item. At this
+  point we can stop, at which point Rust can drop the list, and drop the
+  reference to `List B`
+
+  Now, if wen wanted to drop `List X`, the first item would be safely dropped,
+  and because `List B` now only has 1 reference, it can be safely dropped, and
+  we can traverse the remainder of the list safely dropping values as we go
+
+### Arc
+
+- `Rc` is not thread safe - if a value is shared across threads, the value could
+  be dropped or mutated in one thread, and the other thread wouldn't know
+  about it
+- to address this `Arc` is available, which is drop-in and thread-safe
+  alternative. Thread-safety comes with overhead, so only use it if you need
+  it
+
+### Send and Sync
+
+- there are two major classes of values that allow for interior mutability:
+
+  - cells - single-threaded
+  - locks - multi-threaded
+
+  atomics are primitives that behave like locks
+
+- thread-safety is modeled with two traits in Rust:
+  - `Send`
+    - values are `Send` if they are safe to _move_ between threads
+  - `Sync`
+    - values are `Sync` if they are safe to _share_ between threads
+- as with `Copy`, `Send` and `Sync` are automatically derived for types where
+  all of their members are `Send` or `Sync`
+- most types are `Send` and `Sync` but types that use _interior mutability_ are
+  not! Both `Rc` and `Arc` use interior mutability
+  - the reference counting in `Rc` and `Arc` requires interior mutability
+  - `Rc` achieves reference counting using cells - cells are not thread-safe
+  - `Arc` achieves reference counting using atomics - atomics _are_ thread-safe,
+    so despite interior mutability, `Arc` _is_ thread safe because it
+    implements interior mutability using thread-safe types
