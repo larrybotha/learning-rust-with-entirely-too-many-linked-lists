@@ -123,6 +123,35 @@ impl<T> Default for List<T> {
     }
 }
 
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        // .take the head so that it is consumed and dropped
+        let mut current_node = self.head.take();
+
+        // while the current node is not None...
+        while let Some(node_ref) = current_node {
+            // attempt to unwrap the Rc
+            //  - if we get Ok, then:
+            //      - we know there's only 1 reference to the internal value
+            //      - we can take ownership of that value
+            //  - if we don't, then :
+            //      - there's some other list pointing to the node
+            //      - we need to stop dropping values
+            if let Ok(mut node) = Rc::try_unwrap(node_ref) {
+                // we know we're working with a node that has only a single
+                // reference to it - it's safe to drop this node, so we:
+                //  - .take the node's next value
+                //  - let the node get dropped at the end of this scope
+                current_node = node.next.take();
+            } else {
+                // stop processing the list if there are other references to the
+                // current node!
+                break;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::List;
