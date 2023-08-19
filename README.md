@@ -336,7 +336,7 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   If we used `Box` to represent the shared references to `B`, we'd have an issue
   when it came to dropping the reference...
 
-  If we drop `list X`... should that result in `list B` being dropped? With
+  If we drop `list X`... should that result in `list B` be dropped? With
   `Box` we'd expect that, because `Box` allows _exclusive ownership_, but
   then `list A` would no longer be pointing to the `list B`
 
@@ -344,7 +344,7 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
   for shared references
 
 - `Rc` provides an alternative to `Box` - `Rc` allows for shared references via
-  cloning; we can have have multiple independent references to a value, and only
+  cloning; we can have multiple independent references to a value, and only
   when the count of those references reaches 0 will the `Rc` be dropped
 - destructuring a reference when it's a function argument is is interchangeable
   with dereferencing the value inside the same function:
@@ -421,9 +421,14 @@ Annotations and learning from https://rust-unofficial.github.io/too-many-lists/
 - what we can do, however, is leverage a feature of `Rc` - `Rc::try_unwrap`
   exists to 'release' the value from the `Rc` _if_ there was only 1 reference
   to the value
-- `Rc::try_unwrap` returns a `Result` - if there is only 1 reference, you'll get
-  an `Ok(x)`, otherwise `Err`
-- for `Drop`, we can match on `Ok` so that we can drop the values
+- `Rc::try_unwrap` returns a `Result`
+  - if there is only 1 reference:
+    - you'll get an `Ok(x)`
+    - the reference count will be decremented to 0
+    - the `Rc` will be dropped
+  - otherwise `Err`
+- for `Drop`, we can match on `Ok`, which allows us to operate on the node
+  contained in the `Rc`
 - where do we start...? Looking at the diagram above, if we were to drop `List A`
   starting from the head, and using `Rc::try_unwrap`, we would be able to safely
   drop the first item, but we'd then be unable to drop the second item. At this

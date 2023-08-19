@@ -134,6 +134,15 @@ impl<T> Drop for List<T> {
             //  - if we get Ok, then:
             //      - we know there's only 1 reference to the internal value
             //      - we can take ownership of that value
+            //      - we decrement the reference count to 0
+            //      - Rust then drops node_ref. We can see this by attempting to
+            //          view the Rc::strong_count inside the block:
+            //          - Rust indicates that node_ref has been moved to
+            //              Rc::try_unwrap
+            //          - Rust complains inside the block that we're attempting to
+            //              borrow a moved value
+            //              i.e. the value has been moved into Rc::try_unwrap, and
+            //              then inside the method has been dropped
             //  - if we don't, then :
             //      - there's some other list pointing to the node
             //      - we need to stop dropping values
