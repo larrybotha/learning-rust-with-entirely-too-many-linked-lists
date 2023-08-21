@@ -66,6 +66,36 @@ impl<T> List<T> {
             }
         }
     }
+
+    pub fn pop_front(&mut self) -> Option<T> {
+        // take the old head, setting it to None
+        self.head
+            .take()
+            .map(|old_head| {
+                // take .next on the old_head's node
+                match old_head.borrow_mut().next.take() {
+                    // if there is a node, then...
+                    Some(next_node) => {
+                        // point self.head to the next node of the old node
+                        self.head = Some(Rc::clone(&next_node));
+
+                        // take .prev on the next node, removing the reference
+                        next_node.borrow_mut().prev.take()
+                    }
+                    // else, the list is empty, and we need to drop the reference
+                    // that self.tail has
+                    None => self.tail.take(),
+                };
+
+                Rc::try_unwrap(old_head)
+                    // convert from Result<T, E> to Option<T>
+                    .ok()
+                    // convert from RefCell<T> to T
+                    .map(|cell| cell.into_inner())
+                    .map(|node| node.elem)
+            })
+            .unwrap_or(None)
+    }
 }
 
 impl<T> Default for List<T> {

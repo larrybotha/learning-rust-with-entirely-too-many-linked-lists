@@ -47,11 +47,22 @@ From the tutorial:
   // 3 - we need to be able to mutate the node
   ```
 
-- every node in the list should always have 2 references:
-  - nodes at the tail and head:
-    - the first node should have a reference to it from the head, and its
-      successor node
-    - the last node should have a reference to it from the tail and its
-      predecessor node
-  - every other node should have a reference to it from both its successor and
-    predecessor
+- to add a new node at the head:
+  - every node in the list should always have 2 references:
+    - nodes at the tail and head:
+      - the first node should have a reference to it from the head, and its
+        successor node
+      - the last node should have a reference to it from the tail and its
+        predecessor node
+    - every other node should have a reference to it from both its successor and
+      predecessor
+- to pop a value from the head:
+  - take the current head
+  - if the result is `None`, return that
+  - otherwise we have a node, and:
+    - we `.take` the next node
+      - if that node is None, `.take` the tail to drop the ref
+      - else:
+        - `.take` `.prev` on that node to drop the ref
+        - point the head to that node
+    - return the node's element
