@@ -104,6 +104,26 @@ impl<T> Default for List<T> {
     }
 }
 
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        //let mut current_node = self.head.take();
+
+        //while current_node.is_some() {
+        //    if let Some(cell) = current_node
+        //        .take()
+        //        .map(Rc::try_unwrap)
+        //        .and_then(|result| result.ok())
+        //    {
+        //        let node = cell.into_inner();
+
+        //        current_node = node.next;
+        //    };
+        //}
+
+        while self.pop_front().is_some() {}
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::List;

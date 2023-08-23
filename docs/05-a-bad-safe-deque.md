@@ -68,3 +68,22 @@ From the tutorial:
     - return the node's element
 - `Result::ok` converts from `Result<T, _>` to `Option<T>`
 - `RefCell::into_inner` extracts the value from the cell, consuming the cell
+
+### Drop
+
+- we could do a complicated process of iterating through each value in the list
+  while dropping, but it turns out we've already done all the cleaning up
+  inside `List::pop_front` - we can leverage the associated function when
+  implementing `Drop`:
+
+  ```rust
+  // ...
+  fn drop(&mut self) {
+      while self.pop_front().is_some() {}
+  }
+  // ...
+  ```
+
+- this is an interesting use of a while loop... relying on calling a function on
+  a struct, and then evaluating that result to determine if the loop should be
+  run again, without specifying a body
