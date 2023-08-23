@@ -66,3 +66,5 @@ From the tutorial:
         - `.take` `.prev` on that node to drop the ref
         - point the head to that node
     - return the node's element
+- `Result::ok` converts from `Result<T, _>` to `Option<T>`
+- `RefCell::into_inner` extracts the value from the cell, consuming the cell

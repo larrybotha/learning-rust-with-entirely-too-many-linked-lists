@@ -115,4 +115,22 @@ mod test {
         println!("head: {:?}", list.head);
         println!("tail: {:?}", list.tail);
     }
+
+    #[test]
+    fn is_push_and_poppable_at_front() {
+        let mut list = List::new();
+        let mut xs = [0, 1, 2];
+
+        xs.into_iter().for_each(|x| list.push_front(x));
+
+        xs.reverse();
+
+        for &x in xs.iter() {
+            let value = list.pop_front();
+
+            assert_eq!(value, Some(x));
+        }
+
+        assert_eq!(list.pop_front(), None);
+    }
 }
