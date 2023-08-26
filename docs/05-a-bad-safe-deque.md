@@ -87,3 +87,37 @@ From the tutorial:
 - this is an interesting use of a while loop... relying on calling a function on
   a struct, and then evaluating that result to determine if the loop should be
   run again, without specifying a body
+
+### Peek
+
+- `RefCell::borrow` returns a `Ref<'b, T>`, not a reference to the underlying
+  value
+
+  - `Ref` implements `Deref`, so we can dereference the value inside of it,
+    _BUT_... the lifespan of that value is tied to the lifespan of the
+    `Ref`, not the `RefCell`
+  - this means that if we attempt to return a reference to that value, we'll
+    get a compiler error. e.g.
+
+    ```rust
+    use std::cell::Ref;
+
+    let x = String::from("foo");
+    let cell = RefCell::new(x);
+    let mut y = &x;
+
+    {
+      let ref = cell.borrow(); // Ref<'b, String>
+      y = *ref; // <- fails here
+    } // ref dropped here, y would contain an invalid reference
+    ```
+
+- `Ref` is a functor, so it can be mapped over
+- there's no pragmatic way of getting around the lifetime of the `Ref` and
+  trying to return the reference inside the closure
+
+  As a compromise, we can map over the `Ref`, extracting the value from the
+  `Node`, and returning a reference to the element in the `Node`
+
+- `Option::is_none` and `Option::is_some` are useful for determining whether or
+  not an option contains anything

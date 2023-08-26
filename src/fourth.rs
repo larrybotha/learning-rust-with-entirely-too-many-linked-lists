@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 type Link<T> = Option<Rc<RefCell<Node<T>>>>;
@@ -96,6 +96,33 @@ impl<T> List<T> {
             })
             .unwrap_or(None)
     }
+
+    pub fn peek_front(&self) -> Option<Ref<T>> {
+        self.head
+            // don't consume the head - get a reference to its value
+            .as_ref()
+            .map(|cell| {
+                // The following fails if we attempt to return Option<&T> because:
+                //  - RefCell::borrow returns Ref<_, T>
+                //  - the reference to the value inside that Ref is tied to the
+                //      lifetime of Ref, _not_ RefCell
+                //  - Ref is dropped at the end of the closure
+                //
+                // If we could return a reference to the value Ref holds, we
+                // would end up with an invalid reference!
+                //
+                // Ref can't be used in scenarios where you would like to return
+                // a reference to its value to an external scope, even if the
+                // RefCell's lifetime extends to that outer scope :/
+                //let node = cell.borrow();
+                //let elem = &node.elem;
+
+                //elem
+
+                // so instead, we just get the Ref out
+                Ref::map(cell.borrow(), |node| &node.elem)
+            })
+    }
 }
 
 impl<T> Default for List<T> {
@@ -152,5 +179,22 @@ mod test {
         }
 
         assert_eq!(list.pop_front(), None);
+    }
+
+    #[test]
+    fn is_peekable() {
+        let mut list = List::new();
+
+        assert!(list.peek_front().is_none());
+
+        list.push_front(1);
+        list.push_front(2);
+        list.push_front(3);
+
+        let peek_option = list.peek_front(); // Option<Ref<'_, i32>>
+        let peek_ref = peek_option.unwrap(); // Ref<'_, i32>
+        let peeked_value = *peek_ref; // i32
+
+        assert_eq!(peeked_value, 3);
     }
 }
