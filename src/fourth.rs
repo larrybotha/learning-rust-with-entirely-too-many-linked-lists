@@ -123,6 +123,12 @@ impl<T> List<T> {
                 Ref::map(cell.borrow(), |node| &node.elem)
             })
     }
+
+    pub fn peek_back(&self) -> Option<Ref<T>> {
+        self.tail
+            .as_ref()
+            .map(|ref_cell| Ref::map(ref_cell.borrow(), |node| &node.elem))
+    }
 }
 
 impl<T> Default for List<T> {
@@ -182,7 +188,7 @@ mod test {
     }
 
     #[test]
-    fn is_peekable() {
+    fn peek_front() {
         let mut list = List::new();
 
         assert!(list.peek_front().is_none());
@@ -196,5 +202,19 @@ mod test {
         let peeked_value = *peek_ref; // i32
 
         assert_eq!(peeked_value, 3);
+    }
+
+    #[test]
+    fn peek_back() {
+        let mut list = List::new();
+        let xs = [1, 2, 3];
+
+        assert!(list.peek_back().is_none());
+
+        xs.into_iter().for_each(|x| list.push_front(x));
+
+        let back = list.peek_back().unwrap();
+
+        assert_eq!(*back, 1);
     }
 }
