@@ -121,3 +121,34 @@ From the tutorial:
 
 - `Option::is_none` and `Option::is_some` are useful for determining whether or
   not an option contains anything
+- it appears sufficient in Rust to evaluate that two values are equivalent in
+  terms of their mutability, without having to evaluate that a value is
+  actually mutable, e.g.:
+
+  ```rust
+  assert_eq!(&mut x, &mut y);
+
+  //vs
+
+  // bunch of code asserting that the mutated value of x is x'
+  ```
+
+### Iterator
+
+#### IntoIter
+
+- `IntoIter` is relatively straight-forward to implement because each item in
+  the `List` will be consumed - we don't need to worry about managing
+  references and using `Ref` as with
+- `DoubleEndedIterator` allows for iterating backwards on types where `Iterator`
+  has been implemented
+  - only allowed for types that have a finite number of values, e.g. an infinite
+    range would not be able to implement `DoubleEndedIterator`
+
+#### Iter
+
+- implementing `Iterator::iter` is going to be a mess, because we're back to
+  dealing with returning `Ref<T>` and managing all of that... we skip the
+  nightmare and let the implementation and consequences leaking implementation
+  details of `peek_front` and `peek_back` speak for itself - this is not
+  something one should implement for themselves

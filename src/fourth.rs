@@ -1,4 +1,5 @@
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, RefCell, RefMut};
+use std::iter::DoubleEndedIterator;
 use std::rc::Rc;
 
 type Link<T> = Option<Rc<RefCell<Node<T>>>>;
@@ -26,12 +27,18 @@ pub struct List<T> {
     tail: Link<T>,
 }
 
+pub struct IntoIter<T>(List<T>);
+
 impl<T> List<T> {
     pub fn new() -> Self {
         Self {
             head: None,
             tail: None,
         }
+    }
+
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
     }
 
     pub fn push_front(&mut self, elem: T) {
@@ -56,15 +63,15 @@ impl<T> List<T> {
                 node.borrow_mut().next = Some(Rc::clone(&old_head));
                 // set .prev on the old head's node to the new node
                 old_head.borrow_mut().prev = Some(Rc::clone(&node));
-                // set the new node as head
-                self.head = Some(Rc::clone(&node));
             }
-            // otherwise, point the head and tail to the new node
+            // otherwise, point the tail to the new node
             None => {
-                self.head = Some(Rc::clone(&node));
                 self.tail = Some(Rc::clone(&node));
             }
         }
+
+        // set the new node as head
+        self.head = Some(Rc::clone(&node));
     }
 
     pub fn pop_front(&mut self) -> Option<T> {
@@ -97,6 +104,43 @@ impl<T> List<T> {
             .unwrap_or(None)
     }
 
+    pub fn push_back(&mut self, elem: T) {
+        let node = Node::new(elem);
+
+        match self.tail.take() {
+            Some(old_tail) => {
+                node.borrow_mut().prev = Some(Rc::clone(&old_tail));
+                old_tail.borrow_mut().next = Some(Rc::clone(&node));
+            }
+            None => {
+                self.head = Some(Rc::clone(&node));
+            }
+        }
+
+        self.tail = Some(Rc::clone(&node));
+    }
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        self.tail.take().and_then(|old_node| {
+            let prev_node = old_node.borrow_mut().prev.take();
+
+            match prev_node {
+                Some(node) => {
+                    self.tail = Some(Rc::clone(&node));
+                    node.borrow_mut().next.take();
+                }
+                None => {
+                    self.head.take();
+                }
+            };
+
+            Rc::try_unwrap(old_node)
+                .ok()
+                .map(|ref_cell| ref_cell.into_inner())
+                .map(|node| node.elem)
+        })
+    }
+
     pub fn peek_front(&self) -> Option<Ref<T>> {
         self.head
             // don't consume the head - get a reference to its value
@@ -124,16 +168,46 @@ impl<T> List<T> {
             })
     }
 
+    pub fn peek_front_mut(&mut self) -> Option<RefMut<T>> {
+        self.head.as_deref().map(|x| {
+            let node_ref = x.borrow_mut();
+
+            RefMut::map(node_ref, |node| &mut node.elem)
+        })
+    }
+
     pub fn peek_back(&self) -> Option<Ref<T>> {
         self.tail
             .as_ref()
             .map(|ref_cell| Ref::map(ref_cell.borrow(), |node| &node.elem))
+    }
+
+    pub fn peek_back_mut(&mut self) -> Option<RefMut<T>> {
+        self.tail.as_deref().map(|cell| {
+            let node_ref = cell.borrow_mut();
+
+            RefMut::map(node_ref, |node| &mut node.elem)
+        })
     }
 }
 
 impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop_front()
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.pop_back()
     }
 }
 
@@ -160,6 +234,7 @@ impl<T> Drop for List<T> {
 #[cfg(test)]
 mod test {
     use super::List;
+    use std::cell::RefMut;
 
     #[test]
     fn new_has_no_links() {
@@ -170,7 +245,7 @@ mod test {
     }
 
     #[test]
-    fn is_push_and_poppable_at_front() {
+    fn push_and_pop_front() {
         let mut list = List::new();
         let xs = [0, 1, 2];
 
@@ -185,6 +260,34 @@ mod test {
         }
 
         assert_eq!(list.pop_front(), None);
+    }
+
+    #[test]
+    fn push_back() {
+        let mut list = List::new();
+        let xs = [1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_back(x));
+
+        for &x in xs.iter() {
+            assert_eq!(list.pop_front(), Some(x));
+        }
+
+        assert!(list.pop_front().is_none());
+    }
+
+    #[test]
+    fn pop_back() {
+        let mut list = List::new();
+        let xs = [1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_front(x));
+
+        for &x in xs.iter() {
+            assert_eq!(list.pop_back(), Some(x));
+        }
+
+        assert!(list.pop_back().is_none());
     }
 
     #[test]
@@ -205,6 +308,24 @@ mod test {
     }
 
     #[test]
+    fn peek_front_mut() {
+        let mut list = List::new();
+        let mut xs = [1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_front(x));
+
+        for x in xs.iter_mut().rev() {
+            RefMut::map(list.peek_front_mut().unwrap(), |value| {
+                assert_eq!(value, x);
+
+                value
+            });
+
+            list.pop_front();
+        }
+    }
+
+    #[test]
     fn peek_back() {
         let mut list = List::new();
         let xs = [1, 2, 3];
@@ -213,8 +334,67 @@ mod test {
 
         xs.into_iter().for_each(|x| list.push_front(x));
 
-        let back = list.peek_back().unwrap();
+        for &x in xs.iter() {
+            let actual = *list.peek_back().unwrap();
+            let expected = x;
 
-        assert_eq!(*back, 1);
+            assert_eq!(actual, expected);
+
+            list.pop_back();
+        }
+    }
+
+    #[test]
+    fn peek_back_mut() {
+        let mut list = List::new();
+        let mut xs = [1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_front(x));
+
+        for x in xs.iter_mut() {
+            RefMut::map(list.peek_back_mut().unwrap(), |value| {
+                assert_eq!(value, x);
+
+                value
+            });
+
+            list.pop_back();
+        }
+    }
+
+    #[test]
+    fn iter() {
+        let mut list = List::new();
+        let xs = [1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_front(x));
+
+        let mut iter = list.into_iter();
+
+        for x in xs.iter().rev() {
+            let value = iter.next();
+
+            assert_eq!(value, Some(*x));
+        }
+
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn iter_rev() {
+        let mut list = List::new();
+        let xs = vec![1, 2, 3];
+
+        xs.iter().for_each(|&x| list.push_front(x));
+
+        let mut iter = list.into_iter().rev();
+
+        for &x in xs.iter() {
+            let value = iter.next();
+
+            assert_eq!(value, Some(x));
+        }
+
+        assert!(iter.next().is_none());
     }
 }
