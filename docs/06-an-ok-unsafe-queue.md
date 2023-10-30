@@ -2,6 +2,9 @@
 
 [fifth.rs](../src/fifth.rs)
 
+This is as far as this journey is going to - learning about raw pointers and
+unsafe Rust is not valuable to me right now. TBC... maybe
+
 ## Takeaways
 
 - in a singly linked list, implementing a stack and a queue can be done in
